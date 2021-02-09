@@ -74,6 +74,16 @@ FrameBuffer *FrameBuffer_allocate(char const *device)
 	return fb;
 }
 
+void FrameBuffer_deallocate(FrameBuffer *fb)
+{
+	close(fb->fileDescriptor);
+	if (munmap(fb->colorData, fb->colorDataBytes) != 0)
+	{
+		fprintf(stderr, "FrameBuffer_deallocate: munmap unexpectedly failed.\n");
+	}
+	free(fb);
+}
+
 void FrameBuffer_setPixel(FrameBuffer *fb, size_t x, size_t y, uint16_t color)
 {
 	assert(x < fb->widthPixels);
