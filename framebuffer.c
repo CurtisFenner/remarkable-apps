@@ -1,5 +1,6 @@
+#include "framebuffer.h"
+
 #include <assert.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -11,37 +12,31 @@
 
 #include "mxcfb.h"
 
-// ?
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
 
-typedef struct
-{
-	int left;
-	int top;
-	int width;
-	int height;
-} Rectangle;
-
-typedef struct
+struct FrameBuffer
 {
 	int fileDescriptor;
 	size_t widthPixels;
 	size_t heightPixels;
 	size_t colorDataBytes;
 	uint16_t *colorData;
-} FrameBuffer;
+};
 
-/// Initializes a given FrameBuffer structure.
-/// `device` is a path to a framebuffer device; rm2fb-client makes `"/dev/fb0"`
-/// work.
-/// RETURNS non-zero if there was a problem initializing the FrameBuffer.
-int FrameBuffer_initialize(FrameBuffer *fb, char const *device)
+FrameBuffer *FrameBuffer_allocate(char const *device)
 {
+	FrameBuffer *fb = (FrameBuffer *)malloc(sizeof(FrameBuffer));
+	if (fb == NULL)
+	{
+		return NULL;
+	}
+
 	fb->fileDescriptor = open(device, O_RDWR);
 	if (fb->fileDescriptor < 1)
 	{
 		fprintf(stderr, "FrameBuffer_initialize: could not open `%s`.\n", device);
-		return 1;
+		free(fb);
+		return NULL;
 	}
 
 	// Fetch the size of the display.
@@ -50,7 +45,8 @@ int FrameBuffer_initialize(FrameBuffer *fb, char const *device)
 	{
 		close(fb->fileDescriptor);
 		fprintf(stderr, "FrameBuffer_initialize: could not FBIOGET_VSCREENFINO `%s`.\n", device);
-		return 1;
+		free(fb);
+		return NULL;
 	}
 
 	fb->widthPixels = screenInfo.xres;
@@ -60,7 +56,8 @@ int FrameBuffer_initialize(FrameBuffer *fb, char const *device)
 	{
 		close(fb->fileDescriptor);
 		fprintf(stderr, "FrameBuffer_initialize: expected 16 bits per pixel, but got %d.\n", screenInfo.bits_per_pixel);
-		return 1;
+		free(fb);
+		return NULL;
 	}
 
 	// Memory-map the data buffer.
@@ -70,10 +67,11 @@ int FrameBuffer_initialize(FrameBuffer *fb, char const *device)
 	{
 		close(fb->fileDescriptor);
 		fprintf(stderr, "FrameBuffer_initialize: mmap failed.\n");
-		return 1;
+		free(fb);
+		return NULL;
 	}
 
-	return 0;
+	return fb;
 }
 
 void FrameBuffer_setPixel(FrameBuffer *fb, size_t x, size_t y, uint16_t color)
@@ -85,7 +83,7 @@ void FrameBuffer_setPixel(FrameBuffer *fb, size_t x, size_t y, uint16_t color)
 	fb->colorData[index] = color;
 }
 
-/// `waveform`: 3: didn't
+/// `waveform`: 3
 void FrameBuffer_flush(FrameBuffer *fb, Rectangle rectangle, int waveform)
 {
 	struct mxcfb_update_data updateRequest;
@@ -119,32 +117,7 @@ void FrameBuffer_flush(FrameBuffer *fb, Rectangle rectangle, int waveform)
 	}
 }
 
-int main(int argc, char **argv)
+Rectangle FrameBuffer_size(FrameBuffer const *fb)
 {
-	FrameBuffer fb;
-	if (FrameBuffer_initialize(&fb, "/dev/fb0"))
-	{
-		return 1;
-	}
-
-	for (int y = 0; y < fb.heightPixels; y++)
-	{
-		for (int x = 0; x < fb.widthPixels; x++)
-		{
-			int sx = 1 + (int)sqrt(x);
-			int sy = 1 + (int)sqrt(y);
-
-			uint16_t color = 0;
-			if (sx % 2 == sy % 2)
-			{
-				color = 0xff;
-			}
-			FrameBuffer_setPixel(&fb, x, y, color);
-		}
-	}
-
-	Rectangle rectangle = {0, 0, fb.widthPixels, fb.heightPixels};
-	FrameBuffer_flush(&fb, rectangle, 3);
-
-	return 0;
+	return (Rectangle){0, 0, fb->widthPixels, fb->heightPixels};
 }
