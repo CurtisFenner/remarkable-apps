@@ -40,4 +40,5 @@ command = (["arm-linux-gnueabihf-gcc"]
 subprocess.run(command)
 
 # Send the compiled ELF to the reMarkable 2.
+print("Tried building", exe)
 subprocess.run(["scp", exe, "root@remarkable:/home/root/curtis"])

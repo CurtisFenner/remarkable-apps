@@ -77,7 +77,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "must pass exactly 2 arguments\n");
 		return 1;
 	}
-	run_script(argv[1]);
 
 	FrameBuffer *fb = FrameBuffer_allocate("/dev/fb0");
 	if (fb == NULL)
@@ -93,16 +92,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	while (1)
-	{
-		PenInput_poll(&penInput, fb, penCallback);
-
-		FrameBuffer_flush(fb, dirtyRectangle, 1);
-		fprintf(stderr, "Dirty: (%d, %d, %d, %d)\n",
-				dirtyRectangle.left, dirtyRectangle.top, dirtyRectangle.width, dirtyRectangle.height);
-		dirtyRectangle = (Rectangle){0, 0, 0, 0};
-		usleep(30 * 1000);
-	}
-
+	run_script(argv[1], &penInput, fb);
 	return 0;
 }
