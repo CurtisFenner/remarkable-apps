@@ -14,6 +14,30 @@
 
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
 
+void Rectangle_expandToContain(Rectangle *a, Rectangle b)
+{
+	if (b.width == 0 || b.height == 0)
+	{
+		return;
+	}
+	else if (a->width == 0 || a->height == 0)
+	{
+		*a = b;
+		return;
+	}
+
+	size_t aRight = a->left + a->width;
+	size_t bRight = b.left + b.width;
+	size_t aBottom = a->top + a->height;
+	size_t bBottom = b.top + b.height;
+	size_t right = aRight > bRight ? aRight : bRight;
+	size_t bottom = aBottom > bBottom ? aBottom : bBottom;
+	a->left = a->left < b.left ? a->left : b.left;
+	a->top = a->top < b.top ? a->top : b.top;
+	a->width = right - a->left;
+	a->height = bottom - a->top;
+}
+
 struct FrameBuffer
 {
 	int fileDescriptor;
@@ -103,7 +127,7 @@ void FrameBuffer_flush(FrameBuffer *fb, Rectangle rectangle, int waveform)
 	updateRequest.update_region.width = rectangle.width;
 	updateRequest.update_region.height = rectangle.height;
 
-	updateRequest.update_marker = 0;
+	updateRequest.update_marker = 0x2a;
 	updateRequest.waveform_mode = waveform;
 
 	// Perform a partial update.

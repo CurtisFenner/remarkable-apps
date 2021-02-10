@@ -13,6 +13,10 @@ typedef struct
 	size_t height;
 } Rectangle;
 
+/// MODIFIES the Rectangle pointed to by a to contain Rectangle b.
+/// A zero-area rectangle is considered to be contained by all other rectangles.
+void Rectangle_expandToContain(Rectangle *a, Rectangle b);
+
 struct FrameBuffer;
 typedef struct FrameBuffer FrameBuffer;
 
