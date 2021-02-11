@@ -1,4 +1,9 @@
+package.path = "/home/root/luaapps/?.lua"
+
+local font = require "library/font"
+
 local width, height = rm_fb:size()
+
 
 print("Starting...")
 for y = 0, height - 1 do
@@ -10,6 +15,9 @@ for y = 0, height - 1 do
 		rm_fb:setPixel(x, y, color)
 	end
 end
+
+font.renderString(rm_fb, font.CMU32, 64, height - 64, "Welcome.")
+
 rm_fb:flush(0, 0, width, height, 2)
 
 print("Reset.")

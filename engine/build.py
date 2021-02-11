@@ -48,7 +48,3 @@ command = ([CC]
            + ["../../rmlib/lib/libm.so.6"]
            + ["-l" + lib for lib in libraries])
 subprocess.run(command)
-
-# Send the compiled ELF to the reMarkable 2.
-print("Tried building", exe)
-subprocess.run(["scp", exe, "root@remarkable:/home/root/engine"])

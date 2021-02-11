@@ -36,11 +36,11 @@ static int s_FrameBuffer_setPixel(lua_State *L)
 	Rectangle size = FrameBuffer_size(fb);
 	if (ix < 0 || ix >= size.width)
 	{
-		luaL_error(L, "invalid x `%d` for width `%d`", ix, size.width);
+		return 0;
 	}
 	else if (iy < 0 || iy >= size.height)
 	{
-		luaL_error(L, "invalid y `%d` for height `%d`", iy, size.height);
+		return 0;
 	}
 	else if (icolor < 0 || icolor > UINT16_MAX)
 	{

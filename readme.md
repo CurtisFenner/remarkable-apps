@@ -17,8 +17,10 @@ From inside the `engine/` directory, `python3 build.py` will build Lua 5.3 and
 the `engine` executable. This script includes referencing an alternative libm
 due to linking problems I had with a mismatched glibc version.
 
-The `build.py` script creates the ARM ELF in `engine/built/engine`. It also
-attempts to `scp` the file to `root@remkarable:/home/root/engine`.
+The `build.py` script creates the ARM ELF in `engine/built/engine`.
+
+Use `send.sh` to send `engine/built/engine` along with the contents of `luapps`
+to `root@remarkable:/home/root/engine` and `root@remarkable:/home/root/luaapps`.
 
 # Running Manually (reMarkable 2)
 
@@ -48,7 +50,7 @@ To add an entry, create a file `/home/root/apps/myapp.txt`. Give it contents
 like
 
 ```
-call=rm2fb-client /home/root/engine /home/root/myapp.lua
+call=/home/root/engine /home/root/myapp.lua
 ```
 
 Your app will now be available in the remux launcher, and remux will handle suspending xochitl / your app when you switch between them.
@@ -65,3 +67,4 @@ remarkable2framebuffer
 * https://github.com/ddvk/remarkable2-framebuffer/blob/master/src/client/main.cpp
 * https://github.com/ddvk/remarkable2-framebuffer/blob/master/src/shared/ipc.cpp
 
+Computer Modern Font
