@@ -1,50 +1,44 @@
 package.path = "/home/root/luaapps/?.lua"
 
 local font = require "library/font"
+local ui = require "library/ui"
+
+setmetatable(_G, {
+	__index = function(_, var)
+		error("attempting to read undefined global `" .. tostring(var) .. "`", 2)
+	end,
+})
 
 local width, height = rm_fb:size()
 
+local WHITE = 2 ^ 16 - 1
+local BLACK = 0
 
-print("Starting...")
-for y = 0, height - 1 do
-	for x = 0, width - 1 do
-		local color =  2 ^ 16 - 1
-		if x == 0 or y == 0 or x == width - 1 or y == height - 1 then
-			color = 0
-		end
-		rm_fb:setPixel(x, y, color)
-	end
-end
+local background = ui.Box.new({left = 0, top = 0, right = width, bottom = height}, WHITE)
+local title = ui.TextBox.new(font.CMU32, {left = 500, right = 600, top = 500, bottom = 532}, "")
+local cursor = ui.Box.new({left = 32, top = 32, right = 80, bottom = 100}, BLACK)
 
-font.renderString(rm_fb, font.CMU32, 64, height - 64, "Welcome.")
+local page = ui.VisualStack.new({background, title, cursor})
 
-rm_fb:flush(0, 0, width, height, 2)
+local wasTapped = false
 
-print("Reset.")
-
+print("Initialized.");
 while true do
-	rm_pen:poll(function(pen)
-		if not pen.touching then
-			return
-		end
-		
-		local brush
-		local color
-		if pen.hoverDraw then
-			brush = 2
-			color = 0
-		else
-			brush = 12
-			color = 2^16 - 1
-		end
+	ui.renderFrame(rm_fb, page)
 
-		for y = pen.yPos - brush, pen.yPos + brush do
-			for x = pen.xPos - brush, pen.xPos + brush do
-				if 0 <= x and x < width and 0 <= y and y < height then
-					rm_fb:setPixel(x, y, color)
-				end
+	rm_pen:poll(function(pen)
+		if pen.touching then
+			if not wasTapped then
+				wasTapped = true
+				cursor:setArea({
+					left = pen.xPos - math.random(5, 100),
+					right = pen.xPos + math.random(5, 100),
+					top = pen.yPos - math.random(5, 100),
+					bottom = pen.yPos + math.random(5, 100),
+				})
 			end
+		else
+			wasTapped = false
 		end
-		rm_fb:flush(math.max(0, pen.xPos - brush), math.max(0, pen.yPos - brush), math.min(width, pen.xPos + brush), math.min(height, pen.yPos + brush), 1)
 	end)
 end
