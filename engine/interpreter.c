@@ -25,6 +25,25 @@ static int s_FrameBuffer_size(lua_State *L)
 	return 2;
 }
 
+static int s_FrameBuffer_setRect(lua_State *L)
+{
+	Device *vfb = luaL_checkudata(L, 1, "C-FrameBuffer");
+	FrameBuffer *fb = vfb->frameBuffer;
+	lua_Integer left = luaL_checkinteger(L, 2);
+	lua_Integer top = luaL_checkinteger(L, 3);
+	lua_Integer right = luaL_checkinteger(L, 4);
+	lua_Integer bottom = luaL_checkinteger(L, 5);
+	int icolor = luaL_checkinteger(L, 6);
+
+	if (icolor < 0 || icolor > UINT16_MAX)
+	{
+		luaL_error(L, "invalid color `%d`", icolor);
+	}
+
+	FrameBuffer_setRect(fb, (Rectangle){left, top, right - left, bottom - top}, (uint16_t)icolor);
+	return 0;
+}
+
 static int s_FrameBuffer_setPixel(lua_State *L)
 {
 	Device *vfb = luaL_checkudata(L, 1, "C-FrameBuffer");
@@ -162,6 +181,10 @@ void run_script(char const *script, PenInput *penInput, FrameBuffer *fb)
 
 		lua_pushstring(L, "setPixel");
 		lua_pushcfunction(L, s_FrameBuffer_setPixel);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "setRect");
+		lua_pushcfunction(L, s_FrameBuffer_setRect);
 		lua_rawset(L, -3);
 
 		lua_pushstring(L, "size");

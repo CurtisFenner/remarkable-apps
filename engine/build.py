@@ -37,6 +37,7 @@ if not os.path.exists("built/luas/all.a"):
                    + glob.glob("built/luas/*.o"))
 
 command = ([CC]
+           + ["-O3", "-flto"]
            + ["-o", exe]
            + ["-I" + LUA_SRC]
            + source_files

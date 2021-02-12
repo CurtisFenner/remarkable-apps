@@ -117,6 +117,48 @@ void FrameBuffer_setPixel(FrameBuffer *fb, size_t x, size_t y, uint16_t color)
 	fb->colorData[index] = color;
 }
 
+static void memset2(uint16_t *from, size_t count, uint16_t value)
+{
+	size_t count8s = count / 8;
+	while (count8s != 0)
+	{
+		*(from++) = value;
+		*(from++) = value;
+		*(from++) = value;
+		*(from++) = value;
+		*(from++) = value;
+		*(from++) = value;
+		*(from++) = value;
+		*(from++) = value;
+		count8s -= 1;
+	}
+	count = count % 8;
+	while (count != 0)
+	{
+		*(from++) = value;
+		count -= 1;
+	}
+}
+
+void FrameBuffer_setRect(FrameBuffer *fb, Rectangle rect, uint16_t color)
+{
+	size_t width = fb->widthPixels;
+	size_t x2 = rect.left + rect.width;
+	if (x2 > width)
+	{
+		x2 = width;
+	}
+	if (x2 > rect.left)
+	{
+		size_t w = x2 - rect.left;
+		size_t y2 = rect.top + rect.height;
+		for (size_t y = rect.top; y < y2 && y < fb->heightPixels; y++)
+		{
+			memset2(fb->colorData + y * width + rect.left, x2 - rect.left, color);
+		}
+	}
+}
+
 /// `waveform`: 3
 void FrameBuffer_flush(FrameBuffer *fb, Rectangle rectangle, int waveform)
 {

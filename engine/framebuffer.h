@@ -32,6 +32,9 @@ void FrameBuffer_deallocate(FrameBuffer *fb);
 /// Sets the color of a single pixel in this FrameBuffer.
 void FrameBuffer_setPixel(FrameBuffer *fb, size_t x, size_t y, uint16_t color);
 
+/// Sets the color of all the pixels in the given rectangle.
+void FrameBuffer_setRect(FrameBuffer *fb, Rectangle area, uint16_t color);
+
 /// Flushes the contents of the FrameBuffer to the physical display.
 /// Only the specified Rectangle is requested to flush.
 /// The waveform affects the speed and quality of the update on the display;

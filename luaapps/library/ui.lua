@@ -18,16 +18,45 @@ local font = require "library/font"
 -- render.
 -- (TODO: Indicate the needed waveform in these render regions)
 
--- :render(fb, rect)
--- Renders to the framebuffer ONLY within the given rectangle.
+-- :render(fb, regions)
+-- Renders to the framebuffer ONLY within the given regions.
+-- A bounding left/right/top/bottom is also added to the regions list.
 -- This should NOT modify the state of the underlying VisualElement.
+
+local clockStack = {}
+local function clockOpen(name)
+	-- print(string.rep("\t", #clockStack) .. "< " .. name .. " >")
+	table.insert(clockStack, {name, os.clock()})
+end
+
+local function clockClose()
+	local entry = table.remove(clockStack)
+	-- print(string.format("%s</ %s = %.3f >", string.rep("\t", #clockStack), entry[1], os.clock() - entry[2]))
+end
+
+--------------------------------------------------------------------------------
+
+local VisualElement = {}
+VisualElement.__index = VisualElement
+
+function VisualElement:plan()
+	if self._stale == false then
+		return {}, {}
+	end
+
+	local new = self:bounds()
+	local old = self._lastPlan or {}
+	self._lastPlan = new
+	self._stale = false
+	return old, new
+end
 
 --------------------------------------------------------------------------------
 
 local ZERO_RECT = {type = "rect", left = 0, right = 0, top = 0, bottom = 0}
 
 -- Implements VisualElement protocol.
-local Box = {}
+local Box = setmetatable({}, VisualElement)
 Box.__index = Box
 function Box.new(area, color)
 	assert(type(area.left) == "number")
@@ -38,28 +67,13 @@ function Box.new(area, color)
 	local instance = {
 		_area = area,
 		_color = color,
-
-		_lastArea = {},
-		_stale = true,
 	}
 
 	return setmetatable(instance, Box)
 end
 
-function Box:plan()
-	if not self._stale then
-		return {}, {}
-	end
-
-	local old = self._lastArea
-	local new = {self._area}
-	self._lastArea = new
-	self._stale = false
-	return old, new
-end
-
-function Box:bound()
-	return self._area
+function Box:bounds()
+	return {self._area}
 end
 
 function Box:setArea(area)
@@ -77,15 +91,13 @@ function Box:setColor(color)
 end
 
 function Box:render(fb, rect)
+	clockOpen("Box:render")
 	local lowY = math.max(rect.top, self._area.top)
 	local highY = math.min(rect.bottom, self._area.bottom) - 1
 	local lowX = math.max(rect.left, self._area.left)
 	local highX = math.min(rect.right, self._area.right) - 1
-	for y = lowY, highY do
-		for x = lowX, highX do
-			fb:setPixel(x, y, self._color)
-		end
-	end
+	fb:setRect(lowX, lowY, highX + 1, highY + 1, self._color)
+	clockClose()
 end
 
 --------------------------------------------------------------------------------
@@ -101,6 +113,7 @@ function VisualStack.new(elements)
 end
 
 function VisualStack:plan()
+	clockOpen("VisualStack:plan()")
 	local olds = {}
 	local news = {}
 	for _, v in ipairs(self._elements) do
@@ -112,12 +125,13 @@ function VisualStack:plan()
 			news[#news + 1] = vb[i]
 		end
 	end
+	clockClose()
 	return olds, news
 end
 
-function VisualStack:render(fb, area)
+function VisualStack:render(fb, regions)
 	for _, v in ipairs(self._elements) do
-		v:render(fb, area)
+		v:render(fb, regions)
 	end
 end
 
@@ -182,7 +196,7 @@ function TextBox:plan()
 	return old, new
 end
 
-function TextBox:render(fb, region)
+function TextBox:render(fb, regions)
 	local left = math.max(region.left, self._rect.left)
 	local top = math.max(region.top, self._rect.top)
 	local right = math.min(region.right, self._rect.right)
@@ -196,44 +210,116 @@ end
 
 --------------------------------------------------------------------------------
 
-local function showRectangle(r)
-	return string.format("{left = %d, right = %d; top = %d, bottom = %d}",
-		r.left, r.right, r.top, r.bottom)
+local Line = {}
+Line.__index = Line
+
+function Line.new(x1, y1, x2, y2)
+	local instance = {
+		_x1 = x1,
+		_y1 = y1,
+		_x2 = x2,
+		_y2 = y2,
+
+		_stale = true,
+		_lastPlan = {},
+	}
+	return setmetatable(instance, Line)
 end
 
+function Line:plan()
+	if not self._stale then
+		return {}, {}
+	end
+
+	local old = self._lastPlan
+	local new = {
+		{
+			left = math.min(self._x1, self._x2) - 1,
+			top = math.min(self._y1, self._y2) - 1,
+			right = math.max(self._x1, self._x2) + 1,
+			bottom = math.max(self._y1, self._y2) + 1,
+		},
+	}
+	self._lastPlan = new
+	self._stale = false
+	return old, new
+end
+
+function Line:set(x1, y1, x2, y2)
+	self._x1 = x1
+	self._y1 = y1
+	self._x2 = x2
+	self._y2 = y2
+	self._stale = true
+end
+
+function Line:render(fb, regions)
+	clockOpen("Line:render()")
+	if self._x1 == self._x2 and self._y1 == self._y2 then
+		fb:setPixel(self._x1, self._y1)
+		clockClose("Line:render()")
+		return
+	end
+	
+	if math.abs(self._y1 - self._y2) >= math.abs(self._x1 - self._x2) then
+		for y = math.min(self._y1, self._y2), math.max(self._y1, self._y2) do
+			local p = (y - self._y1) / (self._y2 - self._y1)
+			local tx = p * self._x2 + (1 - p) * self._x1
+			local x = math.floor(tx + 0.5)
+			fb:setPixel(x, y, 0)
+		end
+	else
+		for x = math.min(self._x1, self._x2), math.max(self._x1, self._x2) do
+			local p = (x - self._x1) / (self._x2 - self._x1)
+			local ty = p * self._y2 + (1 - p) * self._y1
+			local y = math.floor(ty + 0.5)
+			fb:setPixel(x, y, 0)
+		end
+	end
+	clockClose("Line:render()")
+end
+
+--------------------------------------------------------------------------------
+
 local function renderFrame(fb, element)
+	clockOpen("renderFrame")
+
 	local olds, news = element:plan()
 
 	if #olds == 0 and #news == 0 then
+		clockClose()
 		return
 	end
 	local begin = os.clock()
 
-	for _, old in ipairs(olds) do
-		element:render(fb, old)
-	end
-	for _, new in ipairs(news) do
-		element:render(fb, new)
-	end
-
 	local width, height = fb:size()
-	for _, old in ipairs(olds) do
-		local left = math.max(0, old.left)
-		local right = math.min(width, old.right)
-		local top = math.max(0, old.top)
-		local bottom = math.min(height, old.bottom)
-		fb:flush(left, top, right, bottom, 1)
+	local regions = {left = width, right = 0, top = height, bottom = 0}
+	for _, r in ipairs(olds) do
+		regions.left = math.min(regions.left, r.left)
+		regions.top = math.min(regions.top, r.top)
+		regions.right = math.max(regions.right, r.right)
+		regions.bottom = math.max(regions.bottom, r.bottom)
+		table.insert(regions, r)
 	end
-	
-	for _, new in ipairs(news) do
-		local left = math.max(0, new.left)
-		local right = math.min(width, new.right)
-		local top = math.max(0, new.top)
-		local bottom = math.min(height, new.bottom)
+	for _, r in ipairs(news) do
+		regions.left = math.min(regions.left, r.left)
+		regions.top = math.min(regions.top, r.top)
+		regions.right = math.max(regions.right, r.right)
+		regions.bottom = math.max(regions.bottom, r.bottom)
+		table.insert(regions, r)
+	end
+
+	element:render(fb, regions)
+
+	for _, region in ipairs(regions) do
+		local left = math.max(0, region.left)
+		local right = math.min(width, region.right)
+		local top = math.max(0, region.top)
+		local bottom = math.min(height, region.bottom)
 		fb:flush(left, top, right, bottom, 1)
 	end
 
-	print(os.clock() - begin, "time spent rerendering")
+	clockClose()
 end
 
 return {
@@ -241,5 +327,6 @@ return {
 	Box = Box,
 	TextBox = TextBox,
 	Window = Window,
+	Line = Line,
 	renderFrame = renderFrame,
 }
