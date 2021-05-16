@@ -149,8 +149,8 @@ function Window.new(fb, target, origin)
 		_ty = target.top,
 		_width = target.right - target.left,
 		_height = target.bottom - target.top,
-		_originLeft = origin and origin.left or 0,
-		_originTop = origin and origin.top or 0,
+		_originLeft = (origin and origin.left) or 0,
+		_originTop = (origin and origin.top) or 0,
 	}
 	return setmetatable(instance, Window)
 end
@@ -172,7 +172,7 @@ function Window:setRect(left, top, right, bottom, color)
 	bottom = bottom - self._originTop
 
 	left = math.max(0, left)
-	top = math.max(0, left)
+	top = math.max(0, top)
 	right = math.min(self._width, right)
 	bottom = math.min(self._height, bottom)
 
