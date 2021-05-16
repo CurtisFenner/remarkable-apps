@@ -142,27 +142,64 @@ end
 local Window = {}
 Window.__index = Window
 
-function Window.new(fb, target)
+function Window.new(fb, target, origin)
 	local instance = {
 		_fb = fb,
 		_tx = target.left,
 		_ty = target.top,
 		_width = target.right - target.left,
 		_height = target.bottom - target.top,
+		_originLeft = origin and origin.left or 0,
+		_originTop = origin and origin.top or 0,
 	}
 	return setmetatable(instance, Window)
 end
 
 function Window:setPixel(x, y, color)
+	x = x - self._originLeft
+	y = y - self._originTop
 	if 0 <= x and x < self._width then
-		if 0 <= y and y <= self._height then
+		if 0 <= y and y < self._height then
 			self._fb:setPixel(x + self._tx, y + self._ty, color)
 		end
 	end
 end
 
+function Window:setRect(left, top, right, bottom, color)
+	left = left - self._originLeft
+	right = right - self._originLeft
+	top = top - self._originTop
+	bottom = bottom - self._originTop
+
+	left = math.max(0, left)
+	top = math.max(0, left)
+	right = math.min(self._width, right)
+	bottom = math.min(self._height, bottom)
+
+	self._fb:setRect(self._tx + left, self._ty + top, self._tx + right, self._ty + bottom, color)
+end
+
+function Window:flush(x1, y1, x2, y2, mode)
+	x1 = x1 - self._originLeft
+	x2 = x2 - self._originLeft
+	y1 = y1 - self._originTop
+	y2 = y2 - self._originTop
+
+	self._fb:flush(self._tx + x1, self._ty + y1, self._tx + x2, self._ty + y2, mode)
+end
+
 function Window:size()
 	return self._width, self._height
+end
+
+function Window:containsOnTarget(x, y)
+	local dx = x - self._tx
+	local dy = y - self._ty
+	if 0 <= dx and dx < self._width and 0 <= dy and dy < self._height then
+		return dx, dy
+	else
+		return false
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -170,11 +207,12 @@ end
 local TextBox = {}
 TextBox.__index = TextBox
 
-function TextBox.new(font, rect, text)
+function TextBox.new(font, rect, text, baseline)
 	local instance = {
 		_font = font,
 		_rect = rect,
 		_text = text,
+		_baseline = baseline,
 
 		_lastPlan = {},
 		_stale = true,
@@ -204,7 +242,7 @@ function TextBox:render(fb, regions)
 	local filter = {left = left, top = top, right = right, bottom = bottom}
 	local window = Window.new(fb, filter)
 	local bx = self._rect.left
-	local by = (self._rect.top + self._rect.bottom) // 2
+	local by = self._baseline
 	font.renderString(window, self._font, bx - filter.left, by - filter.top, self._text)
 end
 
@@ -253,29 +291,32 @@ function Line:set(x1, y1, x2, y2)
 	self._stale = true
 end
 
-function Line:render(fb, regions)
-	clockOpen("Line:render()")
-	if self._x1 == self._x2 and self._y1 == self._y2 then
-		fb:setPixel(self._x1, self._y1)
-		clockClose("Line:render()")
+local function renderLine(fb, x1, y1, x2, y2, color)
+	if x1 == x2 and y1 == y2 then
+		fb:setPixel(x1, y1)
 		return
 	end
 	
-	if math.abs(self._y1 - self._y2) >= math.abs(self._x1 - self._x2) then
-		for y = math.min(self._y1, self._y2), math.max(self._y1, self._y2) do
-			local p = (y - self._y1) / (self._y2 - self._y1)
-			local tx = p * self._x2 + (1 - p) * self._x1
+	if math.abs(y1 - y2) >= math.abs(x1 - x2) then
+		for y = math.min(y1, y2), math.max(y1, y2) do
+			local p = (y - y1) / (y2 - y1)
+			local tx = p * x2 + (1 - p) * x1
 			local x = math.floor(tx + 0.5)
 			fb:setPixel(x, y, 0)
 		end
 	else
-		for x = math.min(self._x1, self._x2), math.max(self._x1, self._x2) do
-			local p = (x - self._x1) / (self._x2 - self._x1)
-			local ty = p * self._y2 + (1 - p) * self._y1
+		for x = math.min(x1, x2), math.max(x1, x2) do
+			local p = (x - x1) / (x2 - x1)
+			local ty = p * y2 + (1 - p) * y1
 			local y = math.floor(ty + 0.5)
 			fb:setPixel(x, y, 0)
 		end
 	end
+end
+
+function Line:render(fb, regions)
+	clockOpen("Line:render()")
+	renderLine(fb, self._x1, self._y1, self._x2, self._y2, 0)
 	clockClose("Line:render()")
 end
 
@@ -329,4 +370,5 @@ return {
 	Window = Window,
 	Line = Line,
 	renderFrame = renderFrame,
+	renderLine = renderLine,
 }
