@@ -8,6 +8,7 @@
 
 #include "framebuffer.h"
 #include "input.h"
+#include "clock.h"
 
 typedef struct
 {
@@ -101,7 +102,7 @@ static void s_PenInput_pollPen_callback(void *vclosure, PenInput const *penInput
 	lua_pushnumber(L, my);
 	lua_rawset(L, -3);
 
-	lua_pushstring(L, "touching");
+	lua_pushstring(L, "contacting");
 	lua_pushboolean(L, penInput->touching.pressed);
 	lua_rawset(L, -3);
 
@@ -168,6 +169,14 @@ static int s_FrameBuffer_flush(lua_State *L)
 	return 0;
 }
 
+static int s_Clock_getSeconds(lua_State *L)
+{
+	Clock *clock = luaL_checkudata(L, 1, "C-Clock");
+
+	lua_pushnumber(L, Clock_getSeconds(clock));
+	return 1;
+}
+
 void run_script(char const *script, PenInput *penInput, FrameBuffer *fb)
 {
 	lua_State *L = luaL_newstate();
@@ -215,6 +224,27 @@ void run_script(char const *script, PenInput *penInput, FrameBuffer *fb)
 	}
 	lua_setmetatable(L, -2);
 	lua_setglobal(L, "rm_pen");
+
+	Clock *monotonicClock = lua_newuserdata(L, sizeof(Clock));
+	*monotonicClock = Clock_monotonic();
+	if (luaL_newmetatable(L, "C-Clock"))
+	{
+		lua_pushstring(L, "__index");
+		lua_newtable(L);
+
+		lua_pushstring(L, "getSeconds");
+		lua_pushcfunction(L, s_Clock_getSeconds);
+		lua_rawset(L, -3);
+
+		lua_rawset(L, -3);
+	}
+	lua_setmetatable(L, -2);
+	lua_setglobal(L, "rm_monotonic");
+
+	Clock **calendar1970Clock = lua_newuserdata(L, sizeof(Clock));
+	luaL_newmetatable(L, "C-Clock");
+	lua_setmetatable(L, -2);
+	lua_setglobal(L, "rm_calendar");
 
 	luaL_openlibs(L);
 

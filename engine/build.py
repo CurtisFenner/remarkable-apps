@@ -13,7 +13,13 @@ AR = "arm-linux-gnueabihf-ar"
 LUA_SRC = "../../lua-5.3.6/src"
 
 LUA_MAINS = set(["lua.c", "luac.c"])
-source_files = ["framebuffer.c", "input.c", "main.c", "interpreter.c"]
+source_files = [
+    "framebuffer.c",
+    "input.c",
+    "main.c",
+    "interpreter.c",
+    "clock.c",
+]
 intermediates = ["built/luas/all.a"]
 libraries = ["dl", "rt"]
 exe = "built/engine"
