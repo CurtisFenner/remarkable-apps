@@ -117,7 +117,7 @@ void FrameBuffer_setPixel(FrameBuffer *fb, size_t x, size_t y, uint16_t color)
 	fb->colorData[index] = color;
 }
 
-static void memset2(uint16_t *from, size_t count, uint16_t value)
+static void memset2(uint16_t *from, uint16_t value, size_t count)
 {
 	size_t count8s = count / 8;
 	while (count8s != 0)
@@ -154,7 +154,7 @@ void FrameBuffer_setRect(FrameBuffer *fb, Rectangle rect, uint16_t color)
 		size_t y2 = rect.top + rect.height;
 		for (size_t y = rect.top; y < y2 && y < fb->heightPixels; y++)
 		{
-			memset2(fb->colorData + y * width + rect.left, x2 - rect.left, color);
+			memset2(fb->colorData + y * width + rect.left, color, w);
 		}
 	}
 }

@@ -92,6 +92,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	run_script(argv[1], &penInput, fb);
+	SlowBuffer *sb = SlowBuffer_allocate(fb);
+	if (sb == NULL)
+	{
+		return 1;
+	}
+
+	run_script(argv[1], &penInput, fb, sb);
 	return 0;
 }

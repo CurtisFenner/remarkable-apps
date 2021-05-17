@@ -51,11 +51,10 @@ local function main()
 		height = SCREEN_HEIGHT,
 	}
 
-	-- local appWidget = SplitWidget.new(screenPlacement, {
-	-- 	[sketchWidget] = true,
-	-- 	[toolbarWidget] = true,
-	-- })
-	local appWidget = sketchWidget
+	local appWidget = SplitWidget.new(screenPlacement, {
+		[sketchWidget] = true,
+		-- [toolbarWidget] = true,
+	})
 
 	local app = {
 		TODO = "TODO",
@@ -132,9 +131,47 @@ local function main()
 		penState = newState
 	end
 
-	while true do
+	local function busySleep(seconds)
+		local start = rm_monotonic:getSeconds()
+		local elapsed
+		repeat
+			elapsed = rm_monotonic:getSeconds() - start
+		until elapsed > seconds
+		return elapsed
+	end
+
+	local block = 32
+
+	busySleep(1)
+
+	rm_sb:setRect(0, 0, block * 4, block * 4, 0)
+
+	rm_sb:flush(0, 0, block * 4, block * 4, 1)
+
+	busySleep(1)
+	
+	rm_sb:setRect(0, 0, block * 4, block * 4, 31)
+
+	rm_sb:flush(0, 0, block * 4, block * 4, 1)
+
+	busySleep(1)
+
+	for u = 0, 3 do
+		for v = 0, 3 do
+			rm_sb:setRect(block * u, block * v, block * (u + 1), block * (v + 1), u % 2 == v % 2 and 0 or 31)
+		end
+	end
+
+	rm_sb:flush(0, 0, block * 4, block * 4, 1)
+
+	-- Only run for 2 minutes.
+	local stopTime = rm_monotonic:getSeconds() + 2 * 60
+	while rm_monotonic:getSeconds() < stopTime do
+		local before = rm_monotonic:getSeconds()
 		rm_pen:poll(handlePen)
-		appWidget:render(rm_fb)
+		local pollingTime = rm_monotonic:getSeconds() - before
+		appWidget:render(rm_sb)
+		rm_sb:flush(0, 0, 1, 1)
 	end
 end
 

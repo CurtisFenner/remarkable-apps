@@ -19,6 +19,7 @@ source_files = [
     "main.c",
     "interpreter.c",
     "clock.c",
+    "slowbuffer.c",
 ]
 intermediates = ["built/luas/all.a"]
 libraries = ["dl", "rt"]
